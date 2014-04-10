@@ -53,8 +53,19 @@ set :linked_dirs, %w{
 # Default value for default_env is {}
 set :default_env, { 
   path: "/usr/local/bin:/usr/bin:/bin", 
-  home: '/home/tulp' 
+  home: '/home/tulp',
+  rails_env: fetch(:stage).to_s
 }
+
+set :assets_paths, %w[vendor/assets app/assets]
+set :git_log_cmd, "git log #{fetch(:previous_revision,'HEAD')}..#{fetch(:current_revision, 'HEAD')}"        
+
+def if_changed?(paths)
+  capture(
+    :git, :log, 
+    fetch(:previous_revision, 'HEAD'), '..', fetch(:current_revision, 'HEAD'),
+    paths.join(' '), '| wc -l').to_i > 0
+end
 
 # default ssh options
 set :ssh_options, {
@@ -95,17 +106,14 @@ namespace :deploy do
 
   Rake::Task['deploy:compile_assets'].clear
 
-  task :compile_assets do
+  task :compile_assets => [:set_rails_env] do
     on roles(:web), in: :parallel do
       within release_path do
-        with rails_env: fetch(:rails_env) do            
-          if fetch(:force_assets,                     
-            capture("git log #{fetch(:previous_revision,'HEAD')}..#{fetch(:current_revision, 'HEAD')} vendor/assets/ app/assets/ | wc -l").to_i > 0)
-            invoke 'deploy:assets:precompile'
-            invoke 'deploy:assets:backup_manifest'
-          else
-            info "[SKIP] deploy:assets:precompile"
-          end
+        if fetch(:force_assets) || is_changed?(fetch(:assets_paths))
+          Rake::Task['deploy:assets:precompile'].invoke
+          Rake::Task['deploy:assets:backup_manifest'].invoke
+        else
+          info "[SKIP] deploy:assets:precompile"
         end
       end
     end

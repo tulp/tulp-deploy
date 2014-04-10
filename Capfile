@@ -13,6 +13,9 @@ require 'capistrano/maintenance'
 # Loads custom tasks from `lib/capistrano/tasks' if you have any defined.
 Dir.glob('lib/tasks/*.cap').each { |r| import r }
 
+# Use pry
+require 'pry'
+
 
 
 
