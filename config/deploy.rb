@@ -46,7 +46,8 @@ set :linked_dirs, %w{
   tmp/cache 
   tmp/sockets 
   public/system 
-  public/robots 
+  public/assets
+  public/sitemaps  
   db/sphinx
 }
 
@@ -60,7 +61,7 @@ set :default_env, {
 set :assets_paths, %w[vendor/assets app/assets]
 set :git_log_cmd, "git log #{fetch(:previous_revision,'HEAD')}..#{fetch(:current_revision, 'HEAD')}"        
 
-def if_changed?(paths)
+def is_changed?(paths)
   capture(
     :git, :log, 
     fetch(:previous_revision, 'HEAD'), '..', fetch(:current_revision, 'HEAD'),
