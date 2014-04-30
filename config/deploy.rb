@@ -80,26 +80,32 @@ namespace :deploy do
 
   desc "Start application"
   task :start do
-    on roles(:app), in: :sequence, wait: 5 do
+    on roles(:web), in: :sequence, wait: 5 do
       execute :sudo, :sv, "start", "tulp_rails" 
+    end    
+    on roles(:resque), in: :sequence, wait: 5 do
       execute :sudo, :sv, "start", "tulp_resque_1"
     end    
   end
 
   desc "Stop application"
   task :stop do
-    on roles(:app), in: :sequence, wait: 5 do
+    on roles(:web), in: :sequence, wait: 5 do
       execute :sudo, :sv, "-w 60", "stop", "tulp_rails" 
-      execute :sudo, :sv, "-w 60", "stop", "tulp_resque_1"
+    end    
+    on roles(:resque), in: :sequence, wait: 5 do
+      execute :sudo, :sv, "stop", "tulp_resque_1"
     end    
   end
 
   desc 'Restart application'
   task :restart do
-    on roles(:app), in: :sequence, wait: 5 do
+    on roles(:web), in: :sequence, wait: 5 do
       execute :sudo, :sv, "-w 60", '2', "tulp_rails" 
-      execute :sudo, :sv, "-w 60", 'restart', "tulp_resque_1"
     end
+    on roles(:resque), in: :sequence, wait: 5 do
+      execute :sudo, :sv, "-w 60", 'restart', "tulp_resque_1"
+    end    
   end
 
   after :publishing, :restart
