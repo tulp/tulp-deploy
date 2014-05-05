@@ -17,6 +17,10 @@ set :repo_path, "#{fetch(:shared_path)}/cached-copy"
 # force 
 set :force_assets, fetch(:force_assets, ENV['ASSETS'])
 
+# all servers with app role have something to do with assets
+# TODO optimize
+set :assets_roles, [:app]
+
 # Default value for :scm is :git
 set :scm, :git
 
@@ -59,7 +63,6 @@ set :default_env, {
 }
 
 set :assets_paths, %w[vendor/assets app/assets]
-set :git_log_cmd, "git log #{fetch(:previous_revision,'HEAD')}..#{fetch(:current_revision, 'HEAD')}"        
 
 def is_changed?(paths)
   capture(
@@ -114,7 +117,9 @@ namespace :deploy do
   Rake::Task['deploy:compile_assets'].clear
 
   task :compile_assets => [:set_rails_env] do
-    on roles(:web), in: :parallel do
+    # BUG fun 'is_changed?' always (?) returns false
+    # SMELL there is another "on roles" block inside the rake tasks
+    on roles(:app), in: :parallel do
       within release_path do
         if fetch(:force_assets) || is_changed?(fetch(:assets_paths))
           Rake::Task['deploy:assets:precompile'].invoke
