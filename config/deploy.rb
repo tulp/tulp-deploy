@@ -40,7 +40,7 @@ set :linked_files, %w(
   config/redis_config.rb 
   config/sphinx.yml 
   config/newrelic.yml
-)
+).push(*fetch(:linked_files, []))
 
 # Default value for linked_dirs is []
 set :linked_dirs, %w{

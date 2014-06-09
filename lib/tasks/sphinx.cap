@@ -1,17 +1,41 @@
 namespace :load do
   task :defaults do
-    config_path = "config/#{fetch(:stage)}.sphinx.conf"
     set :thinking_sphinx_roles, :sphinx
-    set :ts_config, config_path
-    #if test "[ -f #{shared_path.join(config_path)} ]"
-    #  set :linked_files, fetch(:linked_files, []).push(config_path)
-    #end    
+    set :ts_config, "config/#{fetch(:stage)}.sphinx.conf"
+    set :ts_db, 'db/sphinx'
   end
 end
 
-# Capistrano::DSL.stages.each do |stage|
-#   after stage, 'thinking_sphinx:symlink'
-# end
+namespace :deploy do
+  task :check do
+    on roles fetch(:thinking_sphinx_roles) do
+      unless test "[ -f #{shared_path.join(fetch(:ts_config))}}]"
+        info "Not found sphinx config file, trying to generate one"
+        execute :rake, 'thinking_sphinx:configure'
+        execute :cp, current_path.join(fetch(:ts_config)), shared_path.join(fetch(:ts_config))     
+      end
+    end  
+  end
+
+  namespace :symlink do
+    task :linked_files do
+      on roles fetch(:thinking_sphinx_roles) do
+        unless test "[ -f #{current_path.join(fetch(:ts_config))}]"
+          execute :ln, '-s', shared_path.join(fetch(:ts_config), current_path.join(fetch(:ts_config)
+        end
+      end    
+    end
+
+    task :linked_dirs do
+      on roles fetch(:thinking_sphinx_roles) do
+        unless test "[ -f #{current_path.join(fetch(:ts_db))}]"
+          execute :ln, '-s', shared_path.join(fetch(:ts_db)), current_path.join(fetch(:ts_db)
+        end
+      end
+    end
+  end
+end
+
 
 namespace :thinking_sphinx do
   desc 'Start the Sphinx search daemon.'
@@ -19,12 +43,11 @@ namespace :thinking_sphinx do
     on roles fetch(:thinking_sphinx_roles) do
       within current_path do
         with rails_env: fetch(:stage) do
-          execute :sudo, :sv, 'start', 'tulp_sphinx'
+          execute :sudo, :sv, 'start', 'sphinx'
         end
       end
     end
   end
-  before :start, 'thinking_sphinx:configure'
 
   desc 'Generate the Sphinx configuration file.'
   task :configure do
@@ -32,12 +55,14 @@ namespace :thinking_sphinx do
       within current_path do
         with rails_env: fetch(:stage) do          
           execute :rake, 'thinking_sphinx:configure'
-          # in ThinkinSphinx 3 we can specify path co config file! Consider upgrade.
-          if test "[ -f #{fetch(:ts_config)} ]"
+          # in ThinkinSphinx 3 we can specify path to config file! Consider upgrade.
+          if test "[ -f #{current_path.join(fetch(:ts_config))} ]"
             info "Create backup for current sphinx config"
-            execute :cp, shared_path.join(fetch(:ts_config)), shared_path.join(fetch(:ts_config)) + '.old'
+            execute :cp, shared_path.join(fetch(:ts_config)), shared_path.join(fetch(:ts_config) + '.old')
             info "Put freshly generated config into shared folder"
-            execute :cp, fetch(:ts_config), shared_path.join(fetch(:ts_config))
+            execute :cp, current_path.join(fetch(:ts_config)), shared_path.join(fetch(:ts_config))
+	  else
+	    error "No sphinx config file found!"
           end
         end
       end
@@ -49,11 +74,11 @@ namespace :thinking_sphinx do
     on roles fetch(:thinking_sphinx_roles) do
       within current_path do
         with rails_env: fetch(:stage) do
-          execute :sudo, :sv, 'stop', 'tulp_sphinx'
+          execute :sudo, :sv, 'stop', 'sphinx'
         end
       end
     end
   end
-
-
+  
+  before :start, 'thinking_sphinx:configure'  
 end
