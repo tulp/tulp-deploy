@@ -6,4 +6,4 @@ gem 'capistrano-maintenance', github: "capistrano/capistrano-maintenance", requi
 gem 'pry'
 gem 'pry-debugger'
 gem 'pry-stack_explorer'
-
+gem 'whenever', :require => false

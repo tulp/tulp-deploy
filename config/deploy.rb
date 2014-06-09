@@ -24,7 +24,7 @@ set :scm, :git
 set :format, :pretty
 
 # Default value for :log_level is :debug
-set :log_level, :info
+# set :log_level, :info
 
 # Default value for :pty is false
 # set :pty, true
@@ -75,6 +75,8 @@ set :ssh_options, {
 
 # Default value for keep_releases is 5
 # set :keep_releases, 5
+
+set :whenever_roles, [:db]
 
 namespace :deploy do
 
