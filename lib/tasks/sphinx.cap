@@ -9,10 +9,9 @@ end
 namespace :deploy do
   task :check do
     on roles fetch(:thinking_sphinx_roles) do
-      unless test "[ -f #{shared_path.join(fetch(:ts_config))}}]"
-        info "Not found sphinx config file, trying to generate one"
-        execute :rake, 'thinking_sphinx:configure'
-        execute :cp, current_path.join(fetch(:ts_config)), shared_path.join(fetch(:ts_config))     
+      unless test "[ -f #{shared_path.join(fetch(:ts_config))} ]"
+        error "Not found sphinx config file!"
+	exit 1
       end
     end  
   end
@@ -20,17 +19,13 @@ namespace :deploy do
   namespace :symlink do
     task :linked_files do
       on roles fetch(:thinking_sphinx_roles) do
-        unless test "[ -f #{current_path.join(fetch(:ts_config))}]"
-          execute :ln, '-s', shared_path.join(fetch(:ts_config), current_path.join(fetch(:ts_config)
-        end
+        execute :ln, '-s', shared_path.join(fetch(:ts_config)), release_path.join(fetch(:ts_config))
       end    
     end
-
+      
     task :linked_dirs do
       on roles fetch(:thinking_sphinx_roles) do
-        unless test "[ -f #{current_path.join(fetch(:ts_db))}]"
-          execute :ln, '-s', shared_path.join(fetch(:ts_db)), current_path.join(fetch(:ts_db)
-        end
+        execute :ln, '-s', shared_path.join(fetch(:ts_db)), release_path.join(fetch(:ts_db))
       end
     end
   end
