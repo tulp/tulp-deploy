@@ -1,5 +1,5 @@
 # config valid only for Capistrano 3.1
-lock '3.1.0'
+lock '3.2.1'
 
 SSHKit.config.command_map[:rake] = "bundle exec rake"
 
@@ -13,13 +13,6 @@ set :repo_url, 'git@github.com:tulp/tulp.git'
 # Default deploy_to directory is /var/www/my_app
 set :deploy_to, "/srv/#{fetch(:application)}-application" 
 set :repo_path, "#{fetch(:shared_path)}/cached-copy"
-
-# force 
-set :force_assets, fetch(:force_assets, ENV['ASSETS'])
-
-# all servers with app role have something to do with assets
-# TODO optimize
-set :assets_roles, [:app]
 
 # Default value for :scm is :git
 set :scm, :git
@@ -36,7 +29,6 @@ set :log_level, :info
 # Default value for :linked_files is []
 set :linked_files, %w(
   config/database.yml 
-  config/unicorn.rb 
   config/redis_config.rb 
   config/sphinx.yml 
   config/newrelic.yml
@@ -61,15 +53,6 @@ set :default_env, {
   rails_env: fetch(:stage).to_s
 }
 
-set :assets_paths, %w[vendor/assets app/assets]
-
-def is_changed?(paths)
-  capture(
-    :git, :log, 
-    fetch(:previous_revision, 'HEAD'), '..', fetch(:current_revision, 'HEAD'),
-    paths.join(' '), '| wc -l').to_i > 0
-end
-
 # default ssh options
 set :ssh_options, {
   forward_agent: true
@@ -81,10 +64,28 @@ set :ssh_options, {
 set :whenever_roles, [:db]
 
 namespace :deploy do
+  namespace :symlink do
+    task :linked_files do
+      on roles(:web) do
+        file = 'config/unicorn.rb'
+        target = release_path.join(file)
+        source = shared_path.join(file)
+        unless test "[ -L #{target} ]"
+          if test "[ -f #{target} ]"
+            execute :rm, target
+          end
+          execute :ln, '-s', source, target
+        end
+      end
+    end      
+  end
+end
+
+namespace :deploy do
 
   desc "Start application"
   task :start do
-    on roles(:web), in: :sequence, wait: 5 do
+    on roles(:web), in: :sequence, wait: 5 do      
       execute :sudo, :sv, "start", "tulp_rails" 
     end    
     on roles(:resque), in: :sequence, wait: 5 do
@@ -114,22 +115,5 @@ namespace :deploy do
 
   after :publishing, :restart
   after :finishing, "deploy:cleanup"
-
-  Rake::Task['deploy:compile_assets'].clear
-
-  task :compile_assets => [:set_rails_env] do
-    # BUG fun 'is_changed?' always (?) returns false
-    # SMELL there is another "on roles" block inside the rake tasks
-    on roles(:app), in: :parallel do
-      within release_path do
-        if fetch(:force_assets) || is_changed?(fetch(:assets_paths))
-          Rake::Task['deploy:assets:precompile'].invoke
-          Rake::Task['deploy:assets:backup_manifest'].invoke
-        else
-          info "[SKIP] deploy:assets:precompile"
-        end
-      end
-    end
-  end
 end
 
